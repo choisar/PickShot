@@ -12,6 +12,9 @@ export const APP_CONFIG = {
   // Clustering threshold in seconds (photos taken within 8 seconds belong to same burst/group)
   BURST_TIME_THRESHOLD_SECONDS: 8,
 
+  // Visual similarity threshold: Hamming distance <= 12 (~81% similarity)
+  PHASH_HAMMING_THRESHOLD: 12,
+
   // IndexedDB database name and version
   DB_NAME: 'PickShotDB',
   DB_VERSION: 1,

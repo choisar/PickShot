@@ -4,6 +4,7 @@ import { extractExifDate } from '../utils/exif';
 import { ImageMetadata } from '../types/image';
 import { APP_CONFIG } from '../utils/constants';
 import { chunkArray } from '../utils/chunk';
+import { generateThumbnailWithWorker } from '../services/thumbnailService';
 
 export function useFileLoader() {
   const [isLoading, setIsLoading] = useState(false);
@@ -20,7 +21,7 @@ export function useFileLoader() {
         totalFiles,
         processedFiles: 0,
         percentage: 0,
-        statusMessage: `파일 ${totalFiles}개 메타데이터 분석 중...`,
+        statusMessage: `파일 ${totalFiles}개 메타데이터 및 썸네일 분석 중...`,
       });
 
       const results: ImageMetadata[] = [];
@@ -30,15 +31,45 @@ export function useFileLoader() {
       for (const chunk of chunks) {
         const chunkResults = await Promise.all(
           chunk.map(async (file, idx) => {
-            const dateTimeOriginal = await extractExifDate(file);
+            const id = `img_${Date.now()}_${processed + idx}_${Math.random().toString(36).substring(2, 7)}`;
+            
+            let dateTimeOriginal: Date | null = null;
+            try {
+              dateTimeOriginal = await extractExifDate(file);
+            } catch (err) {
+              console.warn(`Failed to extract EXIF for ${file.name}:`, err);
+            }
+
+            let thumbnailBlob: Blob | undefined;
+            let thumbnailUrl: string | undefined;
+            let pHash: string | undefined;
+            let width: number | undefined;
+            let height: number | undefined;
+
+            try {
+              const thumb = await generateThumbnailWithWorker(file, id);
+              thumbnailBlob = thumb.blob;
+              thumbnailUrl = URL.createObjectURL(thumb.blob);
+              pHash = thumb.pHash;
+              width = thumb.width;
+              height = thumb.height;
+            } catch (err) {
+              console.warn(`Worker thumbnail failed for ${file.name}:`, err);
+            }
+
             return {
-              id: `img_${Date.now()}_${processed + idx}_${Math.random().toString(36).substring(2, 7)}`,
+              id,
               file,
               name: file.name,
               size: file.size,
               type: file.type,
               lastModified: file.lastModified,
               dateTimeOriginal,
+              thumbnailBlob,
+              thumbnailUrl,
+              pHash,
+              width,
+              height,
             };
           })
         );
@@ -48,8 +79,8 @@ export function useFileLoader() {
 
         setProgress({
           processedFiles: processed,
-          percentage: Math.round((processed / totalFiles) * 30),
-          statusMessage: `EXIF 파싱 중 (${processed}/${totalFiles})...`,
+          percentage: Math.round((processed / totalFiles) * 50),
+          statusMessage: `썸네일 및 pHash 분석 중 (${processed}/${totalFiles})...`,
         });
       }
 

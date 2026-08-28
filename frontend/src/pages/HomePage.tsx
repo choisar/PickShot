@@ -5,6 +5,8 @@ import { UploadProgress } from '../components/upload/UploadProgress';
 import { useFileLoader } from '../hooks/useFileLoader';
 import { useClustering } from '../hooks/useClustering';
 import { useCurationStore } from '../stores/curationStore';
+import { apiService } from '../services/api';
+import { prepareGroupCurationPayloads } from '../utils/payload';
 
 export const HomePage: React.FC = () => {
   const [showConsent, setShowConsent] = useState(false);
@@ -28,6 +30,20 @@ export const HomePage: React.FC = () => {
 
     // Transition to Curation Page once ready
     setStep('curation');
+
+    // Asynchronously submit groups for AI curation in chunks under 10MB
+    (async () => {
+      for (const grp of groups) {
+        try {
+          const payloads = await prepareGroupCurationPayloads(grp);
+          for (const p of payloads) {
+            await apiService.submitGroupForCuration(p);
+          }
+        } catch (err) {
+          console.warn(`Failed to submit group ${grp.id} for curation:`, err);
+        }
+      }
+    })();
   };
 
   const handleConsentDecline = () => {

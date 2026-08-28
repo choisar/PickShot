@@ -44,6 +44,8 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     e.dataTransfer.effectAllowed = 'move';
   };
 
+  const isHardFiltered = score?.isHardFiltered;
+
   return (
     <div
       draggable
@@ -58,15 +60,18 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         border: isSelected
           ? '2.5px solid #10b981'
           : isAiRecommended
-          ? '2px solid rgba(99, 102, 241, 0.7)'
+          ? '2.5px solid rgba(99, 102, 241, 0.9)'
+          : isHardFiltered
+          ? '1.5px solid rgba(239, 68, 68, 0.4)'
           : '1px solid rgba(255, 255, 255, 0.12)',
         background: 'var(--bg-secondary)',
         aspectRatio: '4/3',
         boxShadow: isSelected
           ? '0 0 16px rgba(16, 185, 129, 0.4)'
           : isAiRecommended
-          ? '0 0 12px rgba(99, 102, 241, 0.25)'
+          ? '0 0 14px rgba(99, 102, 241, 0.35)'
           : 'none',
+        opacity: isHardFiltered && !isSelected && !isHovered ? 0.78 : 1,
         transition: 'all var(--transition-normal)',
         cursor: 'grab',
         userSelect: 'none',
@@ -74,6 +79,33 @@ export const ImageCard: React.FC<ImageCardProps> = ({
     >
       {/* Permanent AI Recommended Badge */}
       {isAiRecommended && <AiRecommendBadge />}
+
+      {/* Hard Filter Warning Badge */}
+      {isHardFiltered && !isAiRecommended && (
+        <div
+          style={{
+            position: 'absolute',
+            top: '8px',
+            left: '8px',
+            zIndex: 10,
+            background: 'rgba(239, 68, 68, 0.85)',
+            backdropFilter: 'blur(6px)',
+            color: '#fff',
+            fontSize: '0.68rem',
+            fontWeight: 700,
+            padding: '3px 8px',
+            borderRadius: '4px',
+            boxShadow: '0 2px 6px rgba(0,0,0,0.3)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '4px',
+          }}
+          title={score?.filterReason || 'Hard Filter 감지'}
+        >
+          <span>⚠️</span>
+          <span>{score?.filterReason?.includes('눈') ? '눈 감음' : score?.filterReason?.includes('블러') ? '흔들림' : '필터됨'}</span>
+        </div>
+      )}
 
       {/* Top-Right Checkbox for Best Cut Selection */}
       <div
@@ -143,7 +175,7 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         style={{
           position: 'absolute',
           inset: 0,
-          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.88) 0%, rgba(0, 0, 0, 0.2) 60%, transparent 100%)',
+          background: 'linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.25) 60%, transparent 100%)',
           opacity: isHovered ? 1 : 0,
           transition: 'opacity var(--transition-fast)',
           display: 'flex',
@@ -201,9 +233,16 @@ export const ImageCard: React.FC<ImageCardProps> = ({
         </div>
 
         {score && (
-          <div style={{ fontSize: '0.72rem', color: '#e2e8f0', display: 'flex', justifyContent: 'space-between' }}>
-            <span>AI 총점: {Math.round((score.totalScore || 0) * 100)}점</span>
-            <span style={{ color: '#94a3b8' }}>선명 {Math.round((score.sharpnessScore || 0) * 100)}</span>
+          <div style={{ fontSize: '0.72rem', color: '#e2e8f0', display: 'flex', flexDirection: 'column', gap: '2px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span style={{ fontWeight: 600 }}>AI 총점: {Math.round((score.totalScore || 0) * 100)}점</span>
+              <span style={{ color: '#94a3b8' }}>선명 {Math.round(score.sharpnessScore || 0)}</span>
+            </div>
+            {score.filterReason && (
+              <div style={{ color: '#fca5a5', fontSize: '0.68rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                {score.filterReason}
+              </div>
+            )}
           </div>
         )}
       </div>

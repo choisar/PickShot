@@ -15,7 +15,7 @@ async def process_and_stream(group_req: CurateGroupRequest):
         "type": "group_analyzed",
         "groupId": result["group_id"],
         "bestImageId": result["best_image_id"],
-        "scores": {k: v.dict(by_alias=True) for k, v in result["scores"].items()},
+        "scores": {k: v.model_dump(by_alias=True) for k, v in result["scores"].items()},
     })
 
 

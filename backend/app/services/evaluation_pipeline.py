@@ -8,7 +8,7 @@ from ..utils.image_utils import decode_base64_image
 class EvaluationPipelineService:
     """
     2-Track Evaluation Pipeline:
-    Track 1: Hard Filter (Blur, Blink, Multi-person weights)
+    Track 1: Hard Filter (Blur detection, MediaPipe Blink & Multi-person weights)
     Track 2: Preference Ranker (CLIP / DINO aesthetic ranking)
     """
 
@@ -39,8 +39,12 @@ class EvaluationPipelineService:
                     print(f"Error processing image {img.id}: {e}")
 
             pref_score = 0.88
-            # Total weighted score
-            total_score = 0.0 if is_filtered else (face_score * 0.4 + pref_score * 0.6)
+            
+            # Base combined score
+            base_score = face_score * 0.45 + pref_score * 0.55
+
+            # If hard filtered (blurred or eyes closed), apply heavy penalty (x 0.2)
+            total_score = round(base_score * 0.2 if is_filtered else base_score, 4)
 
             if total_score > highest_score:
                 highest_score = total_score
@@ -48,9 +52,9 @@ class EvaluationPipelineService:
 
             scores[img.id] = ImageScoreSchema(
                 imageId=img.id,
-                faceScore=face_score,
-                sharpnessScore=sharpness,
-                preferenceScore=pref_score,
+                faceScore=round(face_score, 4),
+                sharpnessScore=round(sharpness, 2),
+                preferenceScore=round(pref_score, 4),
                 totalScore=total_score,
                 isHardFiltered=is_filtered,
                 filterReason=filter_reason,
