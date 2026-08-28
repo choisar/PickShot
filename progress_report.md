@@ -189,3 +189,20 @@ graph TD
 전체적으로 **프론트엔드 UI/UX와 E2E 파이프라인 구조는 ~90% 완성**되어 있으며, 사용자 피드백 기반의 추가 기능(드래그&드롭, 멀티 베스트, AI/사용자 선택 분리)도 잘 반영되어 있습니다.
 
 **핵심 미완성 영역은 백엔드 AI 모델 통합**(CLIP/DINO Preference Ranker, MediaPipe Face Mesh, 다인원 가중치)과 **클라이언트 2차 클러스터링(pHash)**으로, 이 부분이 해결되면 설계 명세서 대비 기능 완성도가 100%에 도달합니다.
+
+---
+## 변경 사항 (v2.1.0)
+---
+
+- **[timeline]** : 2026-08-28 - Phase 1 핵심 AI/클러스터링 파이프라인 구현 완료 및 줌인 뷰어 하이브리드 해상도(Dual-Resolution) 온디맨드 렌더링 적용
+- **[issue]** : 1,000장 이상 대량 로드 OOM 방어를 위해 전역 1080px WebP 썸네일을 생성·바인딩했으나, `CompareModal` 줌인 뷰어에서 2.5x~8x 확대 시 인물 표정 및 눈동자 디테일이 픽셀화되어 선명한 베스트 컷 선별이 어려운 한계 발생.
+- **[discussion]** : Zero-Egress 원칙상 사용자 브라우저 로컬 메모리(`image.file`)에 4K/24MP 원본이 온전히 보존되어 있으므로, 줌인 모달에서만 온디맨드로 원본을 일시 로드하고 닫을 때 즉시 해제하는 듀얼 해상도 전략 채택 논의.
+- **[Architecture]** : **하이브리드 해상도(Dual-Resolution) 온디맨드 렌더링 도입**
+  - **Overview Grid (`GroupGrid`)**: 1080px WebP 썸네일 유지 (1,000장 이상도 UI 프리징/OOM 제로).
+  - **Detail Modal (`CompareModal`)**: 활성 모달 검사 사진에 한해 `URL.createObjectURL(image.file)`을 온디맨드 생성하여 **4K/24MP 원본 해상도 100% 화질로 렌더링**.
+  - **Memory Lifecycle**: 이미지 전환 및 모달 닫기 시 `URL.revokeObjectURL`을 즉시 호출하여 브라우저 메모리 누수 원천 차단.
+- **[New]** : [face_mesh.py](file:///c:/d/PickShot/backend/app/services/face_mesh.py) MediaPipe FaceLandmarker 기반 눈 깜빡임(Blendshapes & EAR) 및 다인원 BBox 가중치 산출 서비스 추가.
+- **[New]** : [phash.ts](file:///c:/d/PickShot/frontend/src/utils/phash.ts) & [thumbnail.worker.ts](file:///c:/d/PickShot/frontend/src/workers/thumbnail.worker.ts) 64비트 dHash 및 Web Worker 비동기 2차 시각 유사도 클러스터링 모듈 추가.
+- **[Performance]** : 대량 로딩 안정성(OOM 방어)과 줌인 시 4K 원본급 초고화질 디테일(속눈썹/눈동자 선명도) 동시 달성.
+- **[Test]** : 백엔드 단위/통합 테스트 5종 통과 (`pytest`) 및 프론트엔드 TypeScript 컴파일/Vite 빌드 통과.
+

@@ -34,30 +34,44 @@ export const CompareModal: React.FC<CompareModalProps> = ({
 
   const { trackZoomInteraction } = useZoomTracker();
 
-  // Pre-generate and memoize blob URLs to avoid creating thousands of URLs on every render
-  const imageUrlMap = useMemo(() => {
+  // On-demand Full-Resolution Object URL for the actively inspected image
+  const [activeFullResUrl, setActiveFullResUrl] = useState<string>('');
+
+  // Thumbnail map for the bottom navigation strip (fast & lightweight)
+  const thumbnailMap = useMemo(() => {
     if (!group) return {};
     const map: Record<string, string> = {};
     group.images.forEach((img) => {
-      if (img.thumbnailUrl) {
-        map[img.id] = img.thumbnailUrl;
-      } else if (img.file) {
-        map[img.id] = URL.createObjectURL(img.file);
-      }
+      map[img.id] = img.thumbnailUrl || '';
     });
     return map;
   }, [group]);
 
-  // Clean up blob URLs when group unmounts
+  // Load and manage Full-Resolution Object URL on demand for the current image
   useEffect(() => {
+    if (!isOpen || !currentId || !group) {
+      setActiveFullResUrl('');
+      return;
+    }
+
+    const currentImg = group.images.find((img) => img.id === currentId);
+    if (!currentImg) return;
+
+    let url = '';
+    if (currentImg.file) {
+      url = URL.createObjectURL(currentImg.file);
+    } else if (currentImg.thumbnailUrl) {
+      url = currentImg.thumbnailUrl;
+    }
+
+    setActiveFullResUrl(url);
+
     return () => {
-      Object.values(imageUrlMap).forEach((url) => {
-        if (url.startsWith('blob:')) {
-          URL.revokeObjectURL(url);
-        }
-      });
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
     };
-  }, [imageUrlMap]);
+  }, [isOpen, currentId, group]);
 
   // Sync zoomScaleRef
   zoomScaleRef.current = zoomScale;
@@ -483,7 +497,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
           }}
         >
           <img
-            src={imageUrlMap[currentImage.id] || ''}
+            src={activeFullResUrl || thumbnailMap[currentImage.id] || ''}
             alt={currentImage.name}
             style={{
               maxWidth: '92%',
@@ -493,6 +507,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
               boxShadow: '0 8px 32px rgba(0, 0, 0, 0.6)',
               userSelect: 'none',
               pointerEvents: 'none',
+              imageRendering: 'auto',
             }}
             draggable={false}
           />
@@ -631,7 +646,7 @@ export const CompareModal: React.FC<CompareModalProps> = ({
               }}
             >
               <img
-                src={imageUrlMap[img.id] || ''}
+                src={thumbnailMap[img.id] || ''}
                 alt={img.name}
                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
               />
