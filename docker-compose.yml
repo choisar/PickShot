@@ -2,15 +2,18 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: pickshot-backend
     ports:
       - "8000:8000"
+    volumes:
+      - ./backend/app:/app/app
+      - ./backend/tests:/app/tests
     environment:
-      - ENVIRONMENT=production
+      - ENVIRONMENT=development
       - HOST=0.0.0.0
       - PORT=8000
-      - LOG_LEVEL=info
+      - LOG_LEVEL=debug
       - DEVICE=cpu
       - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/pickshot
     depends_on:
@@ -21,10 +24,17 @@ services:
   frontend:
     build:
       context: ./frontend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     container_name: pickshot-frontend
     ports:
-      - "3000:80"
+      - "3000:3000"
+    volumes:
+      - ./frontend/src:/app/src
+      - ./frontend/index.html:/app/index.html
+      - ./frontend/vite.config.ts:/app/vite.config.ts
+      - /app/node_modules
+    environment:
+      - NODE_ENV=development
     depends_on:
       - backend
     restart: unless-stopped
